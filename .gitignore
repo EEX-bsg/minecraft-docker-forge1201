@@ -1,0 +1,69 @@
+# env
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+
+# docker compose (local overrides)
+docker-compose.override.yml
+docker-compose.*.override.yml
+docker-compose.local.yml
+docker-compose.*.local.yml
+compose.override.yml
+compose.*.override.yml
+compose.local.yml
+compose.*.local.yml
+
+# logs / temp
+*.log
+logs/
+log/
+tmp/
+temp/
+
+# windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# mac
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# visual studio
+.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vcxproj.user
+
+# vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# emacs
+*~
+\#*\#
+.\#*
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list/
+tramp/
+.elpa/
+.lsp/
+.eglot/
