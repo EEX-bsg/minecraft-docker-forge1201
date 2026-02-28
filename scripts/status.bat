@@ -42,10 +42,11 @@ docker exec mc rcon-cli list 2>nul
 echo.
 
 echo --- リソース使用量 ---
-docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" mc mc-tailscale mc-backups mc-scheduler mc-autoheal 2>nul
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" mc mc-tailscale mc-backups mc-scheduler mc-autoheal mc-minedmap mc-map-viewer 2>nul
 echo.
 
 echo --- 接続情報 ---
 echo   アドレス: localhost:25565
+echo   Web マップ: http://localhost:8123
 echo.
 pause
