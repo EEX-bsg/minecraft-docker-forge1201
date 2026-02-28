@@ -160,7 +160,7 @@ services:
       - "--sign-prefix=${MAP_SIGN_PREFIX:-[Map]}"
       - "--sign-transform=s/\\[Map\\]//"
       - "--watch"
-      - "--watch-delay=${MAP_WATCH_DELAY:-3600}"
+      - "--watch-delay=${MAP_WATCH_DELAY:-3600sec}"
       - "/input/${MAP_WORLD_NAME:-world}"
       - "/output"
     volumes:

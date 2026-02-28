@@ -191,7 +191,7 @@ Minecraft サーバープロセスがクラッシュした場合、自動的に�
 
 ```
 MAP_PORT=8123           # 表示ポート
-MAP_WATCH_DELAY=3600    # 更新間隔（秒）
+MAP_WATCH_DELAY=3600sec # 更新間隔（秒）
 MAP_JOBS_INITIAL=2      # 初回レンダリングの並列数
 ```
 
