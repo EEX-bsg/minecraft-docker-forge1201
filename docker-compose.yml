@@ -141,47 +141,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-  # ============================================================
-  # MinedMap - 軽量2D Webマップ
-  # Rust製の外部レンダラー。region ファイルを直接読み取り、
-  # Leaflet タイルを生成する。mod/plugin 不要。
-  # --watch モードでファイル変更を検知し自動で増分レンダリング。
-  # ============================================================
-  minedmap:
-    image: ghcr.io/neocturne/minedmap/minedmap
-    container_name: mc-minedmap
-    depends_on:
-      mc:
-        condition: service_healthy
-    command:
-      - "--jobs-initial=${MAP_JOBS_INITIAL:-2}"
-      - "--jobs=${MAP_JOBS:-1}"
-      - "--image-format=webp"
-      - "--sign-prefix=${MAP_SIGN_PREFIX:-[Map]}"
-      - "--sign-transform=s/\\[Map\\]//"
-      - "--watch"
-      - "--watch-delay=${MAP_WATCH_DELAY:-3600}"
-      - "/input/${MAP_WORLD_NAME:-world}"
-      - "/output"
-    volumes:
-      - mc-data:/input:ro
-      - map-tiles:/output
-      - map-processed:/output/processed
-    network_mode: "none"
-    restart: unless-stopped
-
-  map-viewer:
-    image: ghcr.io/neocturne/minedmap/viewer
-    container_name: mc-map-viewer
-    ports:
-      - "${MAP_PORT:-8123}:80"
-    volumes:
-      - map-tiles:/usr/share/nginx/html/data:ro
-    restart: unless-stopped
-
 volumes:
   mc-data:
   mc-backups:
   ts-state:
-  map-tiles:
-  map-processed:
