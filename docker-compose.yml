@@ -6,6 +6,7 @@ services:
     # tailscale が落ちても mc のネットワークは影響を受けない
     ports:
       - "${MC_PORT:-25565}:25565"
+      - "${MAP_PORT:-8123}:${MAP_PORT:-8123}"
     environment:
       EULA: "TRUE"
       TYPE: FORGE
@@ -78,6 +79,7 @@ services:
     environment:
       TS_AUTHKEY: "${TS_AUTHKEY:-}"
       TS_STATE_DIR: /var/lib/tailscale
+      TS_NO_LOGS_NO_SUPPORT: "true"
       TS_EXTRA_ARGS: "${TS_EXTRA_ARGS:---advertise-tags=tag:mc-server --hostname=${TS_HOSTNAME:-mc-server}}"
     volumes:
       - ts-state:/var/lib/tailscale
@@ -150,6 +152,7 @@ services:
   minedmap:
     image: ghcr.io/neocturne/minedmap/minedmap
     container_name: mc-minedmap
+    user: "0:0"
     depends_on:
       mc:
         condition: service_healthy
@@ -157,8 +160,8 @@ services:
       - "--jobs-initial=${MAP_JOBS_INITIAL:-2}"
       - "--jobs=${MAP_JOBS:-1}"
       - "--image-format=webp"
-      - "--sign-prefix=${MAP_SIGN_PREFIX:-[Map]}"
-      - "--sign-transform=s/\\[Map\\]//"
+      - "--sign-filter=\\[[Mm]ap\\]"
+      - "--sign-transform=s/\\[[Mm]ap\\]//"
       - "--watch"
       - "--watch-delay=${MAP_WATCH_DELAY:-3600sec}"
       - "/input/${MAP_WORLD_NAME:-world}"
@@ -173,8 +176,13 @@ services:
   map-viewer:
     image: ghcr.io/neocturne/minedmap/viewer
     container_name: mc-map-viewer
-    ports:
-      - "${MAP_PORT:-8123}:80"
+    network_mode: service:mc
+    depends_on:
+      mc:
+        condition: service_started
+    command: >
+      sh -c "sed -i 's/listen  *80;/listen ${MAP_PORT:-8123};/' /etc/nginx/conf.d/default.conf &&
+             nginx -g 'daemon off;'"
     volumes:
       - map-tiles:/usr/share/nginx/html/data:ro
     restart: unless-stopped

@@ -38,23 +38,23 @@ rcon-cli --address "${RCON_HOST:-mc}:${RCON_PORT:-25575}" --password "${RCON_PAS
 EOF
 chmod +x /usr/local/bin/rcon-send
 
-# Docker API ヘルパースクリプト
-# Docker Socket 経由で mc コンテナを制御する
-cat > /usr/local/bin/docker-mc << 'EOF'
+# Docker API 汎用ヘルパースクリプト
+# Docker Socket 経由で任意のコンテナを制御する
+cat > /usr/local/bin/docker-ctl << 'EOF'
 #!/bin/sh
-# 使い方: docker-mc start|stop|status
-# Docker Engine API を使って mc コンテナを制御する
+# 使い方: docker-ctl <start|stop|restart|status> [container_name]
+# Docker Engine API を使ってコンテナを制御する
 DOCKER_SOCKET="/var/run/docker.sock"
-CONTAINER="mc"
+CMD="$1"
+CONTAINER="${2:-mc}"
 
-case "$1" in
+case "$CMD" in
   stop)
-    # t=30: 30秒の猶予後に SIGKILL（通常は SIGTERM で先にグレースフル停止される）
     HTTP_CODE=$(curl -s --unix-socket "$DOCKER_SOCKET" \
       -X POST "http://localhost/containers/${CONTAINER}/stop?t=30" \
       -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
     case "$HTTP_CODE" in
-      204|304) exit 0 ;;  # 204=stopped, 304=already stopped
+      204|304) exit 0 ;;
       *)       exit 1 ;;
     esac
     ;;
@@ -63,21 +63,36 @@ case "$1" in
       -X POST "http://localhost/containers/${CONTAINER}/start" \
       -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
     case "$HTTP_CODE" in
-      204|304) exit 0 ;;  # 204=started, 304=already running
+      204|304) exit 0 ;;
       *)       exit 1 ;;
     esac
     ;;
+  restart)
+    HTTP_CODE=$(curl -s --unix-socket "$DOCKER_SOCKET" \
+      -X POST "http://localhost/containers/${CONTAINER}/restart?t=10" \
+      -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+    case "$HTTP_CODE" in
+      204) exit 0 ;;
+      *)   exit 1 ;;
+    esac
+    ;;
   status)
-    # running / exited / ... を返す
     curl -sf --unix-socket "$DOCKER_SOCKET" \
       "http://localhost/containers/${CONTAINER}/json" 2>/dev/null \
       | sed -n 's/.*"Status":"\([^"]*\)".*/\1/p'
     ;;
   *)
-    echo "Usage: docker-mc start|stop|status" >&2
+    echo "Usage: docker-ctl <start|stop|restart|status> [container_name]" >&2
     exit 1
     ;;
 esac
+EOF
+chmod +x /usr/local/bin/docker-ctl
+
+# docker-mc: 後方互換ラッパー（mc コンテナ専用ショートカット）
+cat > /usr/local/bin/docker-mc << 'EOF'
+#!/bin/sh
+exec /usr/local/bin/docker-ctl "$1" mc
 EOF
 chmod +x /usr/local/bin/docker-mc
 
@@ -157,6 +172,33 @@ if [ "$SCHEDULE_MODE" = "timed" ] || [ "$SCHEDULE_MODE" = "custom" ]; then
   cat >> "$CRONTAB_FILE" << STARTJOB
 ${START_MIN} ${START_HOUR} * * ${CRON_DAYS} /scripts/schedule-start.sh >> /var/log/scheduler.log 2>&1
 STARTJOB
+
+  # 停止前の事前通知（日次再起動と同じ RESTART_WARN_MINUTES を流用）
+  WARN_MINUTES="${RESTART_WARN_MINUTES:-10,5,1}"
+  IFS=','
+  for warn_min in $WARN_MINUTES; do
+    warn_min=$(echo "$warn_min" | tr -d ' ')
+    if [ "$warn_min" = "1" ]; then
+      continue
+    fi
+    total_min=$((STOP_HOUR * 60 + STOP_MIN - warn_min))
+    if [ "$total_min" -lt 0 ]; then
+      total_min=$((total_min + 1440))
+    fi
+    notify_hour=$((total_min / 60))
+    notify_min=$((total_min % 60))
+    echo "${notify_min} ${notify_hour} * * ${CRON_DAYS} /usr/local/bin/rcon-send \"say §e[スケジュール停止] ${warn_min}分後にサーバーを停止します\"" >> "$CRONTAB_FILE"
+  done
+  unset IFS
+
+  # 1分前（赤色）
+  total_min=$((STOP_HOUR * 60 + STOP_MIN - 1))
+  if [ "$total_min" -lt 0 ]; then
+    total_min=$((total_min + 1440))
+  fi
+  notify_hour=$((total_min / 60))
+  notify_min=$((total_min % 60))
+  echo "${notify_min} ${notify_hour} * * ${CRON_DAYS} /usr/local/bin/rcon-send \"say §c[スケジュール停止] 1分後にサーバーを停止します。安全な場所でログアウトしてください\"" >> "$CRONTAB_FILE"
 
   # 停止ジョブ（RCON 通知 → save → Docker API で mc コンテナを停止）
   cat >> "$CRONTAB_FILE" << STOPJOB
