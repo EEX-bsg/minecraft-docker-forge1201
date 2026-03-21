@@ -19,7 +19,7 @@ sleep 3
 # Docker API で mc コンテナを停止
 # restart: unless-stopped は docker stop で停止されたコンテナを自動再起動しない
 echo "[schedule-stop] Stopping mc container via Docker API..."
-docker-mc stop
+/usr/local/bin/docker-ctl stop mc
 RESULT=$?
 
 if [ "$RESULT" -eq 0 ]; then
@@ -27,3 +27,10 @@ if [ "$RESULT" -eq 0 ]; then
 else
   echo "[schedule-stop] $(date '+%Y-%m-%d %H:%M:%S') WARNING: Failed to stop mc container (exit=$RESULT)."
 fi
+
+# 依存コンテナも停止（mc のネットワーク名前空間が消えるため）
+echo "[schedule-stop] Stopping dependent containers..."
+/usr/local/bin/docker-ctl stop mc-tailscale 2>/dev/null || true
+/usr/local/bin/docker-ctl stop mc-map-viewer 2>/dev/null || true
+
+echo "[schedule-stop] $(date '+%Y-%m-%d %H:%M:%S') Scheduled stop completed."
